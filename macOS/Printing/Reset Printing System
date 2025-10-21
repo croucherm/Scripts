@@ -1,0 +1,157 @@
+#!/bin/bash
+#
+# Reset Printing System
+# Description:
+#   Creates a timestamped backup of /private/etc/cups, stops the CUPS service,
+#   runs Apple's printtool --reset -f to perform a full printing-system reset,
+#   then restarts and verifies CUPS is running. Backups preserve metadata when
+#   possible and use a tar.gz fallback.
+#
+# Version: 1
+# Date: 2025-10-21
+# Author: Mike Croucher
+#
+# Notes:
+#   - This script must be run as root (Jamf policies run scripts as root by default).
+#   - The script relies solely on Apple's printtool for the reset; it will abort if
+#     printtool is not present or not executable.
+#   - Backups are written to /Library/PrinterBackup with a timestamped directory or tar.gz.
+#   - Logs are appended to /Library/Logs/FullPrintingReset.log.
+#   - Test on non-production machines for each macOS version you support.
+#
+# Usage:
+#   sudo /path/to/"Reset Printing System"   # or run as root via Jamf
+#
+# Path to printtool expected:
+#   /System/Library/Frameworks/ApplicationServices.framework/Frameworks/PrintCore.framework/Versions/A/printtool
+#
+
+# Logging setup
+log_file="/Library/Logs/FullPrintingReset.log"
+exec > >(tee -a "$log_file") 2>&1
+echo "===== Full Printing System Reset Started: $(date) ====="
+
+# Ensure running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root. Exiting."
+    exit 1
+fi
+
+# Paths and timestamps
+backup_dir="/Library/PrinterBackup"
+mkdir -p "$backup_dir"
+ts="$(date +%Y%m%d-%H%M%S)"
+CUPS_SRC="/private/etc/cups"
+CUPS_DEST="$backup_dir/cups-$ts"
+CUPS_PLIST="/System/Library/LaunchDaemons/org.cups.cupsd.plist"
+CUPS_LABEL="org.cups.cupsd"
+PRINTTOOL="/System/Library/Frameworks/ApplicationServices.framework/Frameworks/PrintCore.framework/Versions/A/printtool"
+
+# Stop CUPS (system domain preferred) and wait for cupsd to exit
+echo "Stopping CUPS (system domain preferred)..."
+if launchctl print system/"$CUPS_LABEL" >/dev/null 2>&1; then
+    echo "Attempting: launchctl bootout system $CUPS_PLIST"
+    if launchctl bootout system "$CUPS_PLIST" 2>/dev/null; then
+        echo "launchctl bootout succeeded."
+    else
+        echo "bootout failed; attempting launchctl stop $CUPS_LABEL"
+        launchctl stop "$CUPS_LABEL" 2>/dev/null || true
+    fi
+else
+    echo "CUPS not present in system domain; attempting label stop..."
+    launchctl stop "$CUPS_LABEL" 2>/dev/null || true
+fi
+
+# Wait for cupsd to exit (max 20s)
+count=0
+while pgrep -x cupsd >/dev/null 2>&1 && [ $count -lt 20 ]; do
+    sleep 1
+    count=$((count + 1))
+done
+
+if pgrep -x cupsd >/dev/null 2>&1; then
+    echo "Warning: cupsd still running after wait; attempting SIGTERM..."
+    pkill -TERM cupsd 2>/dev/null || true
+    sleep 2
+fi
+
+# Backup CUPS directory
+if [ -d "$CUPS_SRC" ]; then
+    echo "Backing up $CUPS_SRC to $CUPS_DEST"
+    if command -v ditto >/dev/null 2>&1; then
+        if ditto --nocache "$CUPS_SRC" "$CUPS_DEST"; then
+            echo "ditto backup completed: $CUPS_DEST"
+        else
+            echo "ditto failed; will attempt tar.gz fallback"
+            if /usr/bin/tar -czf "$backup_dir/cups-$ts.tar.gz" -C /private/etc cups; then
+                echo "tar.gz backup completed: $backup_dir/cups-$ts.tar.gz"
+            else
+                echo "Backup failed. Aborting to avoid destructive reset."
+                exit 1
+            fi
+        fi
+    else
+        echo "ditto not available; creating tar.gz archive"
+        if /usr/bin/tar -czf "$backup_dir/cups-$ts.tar.gz" -C /private/etc cups; then
+            echo "tar.gz backup completed: $backup_dir/cups-$ts.tar.gz"
+        else
+            echo "Backup failed. Aborting to avoid destructive reset."
+            exit 1
+        fi
+    fi
+else
+    echo "CUPS directory $CUPS_SRC not found; continuing (nothing to backup)."
+fi
+
+# Ensure printtool exists and is executable
+if [ ! -x "$PRINTTOOL" ]; then
+    echo "ERROR: printtool not found or not executable at $PRINTTOOL"
+    echo "This script relies solely on printtool for the reset. Exiting."
+    exit 2
+fi
+
+# Invoke printtool
+echo "Running printtool --reset -f"
+if "$PRINTTOOL" --reset -f 2>&1 | tee -a "$log_file"; then
+    echo "printtool --reset -f completed successfully."
+else
+    rc=${PIPESTATUS[0]:-1}
+    echo "printtool failed with exit code $rc. Restore from backup if needed."
+    exit $rc
+fi
+
+# Restart CUPS (system domain preferred)
+echo "Restarting CUPS (system domain kickstart preferred)..."
+if launchctl print system/"$CUPS_LABEL" >/dev/null 2>&1; then
+    if launchctl kickstart -k system/"$CUPS_LABEL" >/dev/null 2>&1; then
+        echo "launchctl kickstart succeeded."
+    else
+        echo "kickstart failed; attempting launchctl start $CUPS_LABEL"
+        launchctl start "$CUPS_LABEL" 2>/dev/null || echo "Failed to start CUPS via launchctl."
+    fi
+else
+    echo "CUPS not found in system domain; attempting launchctl start by label"
+    launchctl start "$CUPS_LABEL" 2>/dev/null || echo "Failed to start CUPS via launchctl."
+fi
+
+# Verify CUPS scheduler
+if command -v lpstat >/dev/null 2>&1; then
+    echo "Waiting for CUPS scheduler to report running..."
+    timeout=30
+    elapsed=0
+    while ! lpstat -r 2>/dev/null | grep -q "scheduler is running" && [ $elapsed -lt $timeout ]; do
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+
+    if lpstat -r 2>/dev/null | grep -q "scheduler is running"; then
+        echo "CUPS restarted and scheduler is running."
+    else
+        echo "CUPS did not report 'scheduler is running' within $timeout seconds. Check logs."
+        exit 3
+    fi
+else
+    echo "lpstat not available; skipping scheduler check."
+fi
+
+echo "===== Full Printing System Reset Completed: $(date) ====="
