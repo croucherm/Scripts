@@ -1,0 +1,23 @@
+#!/bin/bash
+
+LOG="/var/log/defender_update.log"
+PKG_PATH="/Library/Application Support/JAMF/Downloads/wdav-101.25082.0006.pkg"
+
+echo "$(date) - Starting Defender update..." >> "$LOG"
+
+/usr/local/bin/mdatp config tamper-protection enforcement-level --value audit
+echo "$(date) - Tamper protection set to audit." >> "$LOG"
+
+installer -pkg "$PKG_PATH" -target /
+INSTALL_STATUS=$?
+
+if [ $INSTALL_STATUS -eq 0 ]; then
+  echo "$(date) - Defender update installed successfully." >> "$LOG"
+else
+  echo "$(date) - Defender update failed with status $INSTALL_STATUS." >> "$LOG"
+fi
+
+/usr/local/bin/mdatp config tamper-protection enforcement-level --value block
+echo "$(date) - Tamper protection restored to block." >> "$LOG"
+
+exit $INSTALL_STATUS
