@@ -1,3 +1,5 @@
+# Testing a new branch and pull request
+
 #!/bin/bash
 
 LOG="/var/log/defender_update.log"
