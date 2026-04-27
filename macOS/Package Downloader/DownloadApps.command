@@ -26,7 +26,7 @@ declare -r -A apps=(
     ["GitKraken"]="https://release.gitkraken.com/darwin/installGitKraken.dmg"
     ["GoToMeeting"]="https://link.gotomeeting.com/latest-dmg"
     ["Google Chrome"]="https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms"
-    ["Grammarly"]="https://www.grammarly.com/service/download/direct?default=true""
+    ["Grammarly"]="https://www.grammarly.com/service/download/direct?default=true"
     ["iLok License Manager"]="https://installers.ilok.com/iloklicensemanager/LicenseSupportInstallerMac.zip"
     ["Iterate Cyberduck"]="https://version.cyberduck.io/Cyberduck-latest.zip"
     ["Keka"]="https://d.keka.io/"
