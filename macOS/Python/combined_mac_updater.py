@@ -44,6 +44,52 @@ MOZILLA_FIREFOX_VERSIONS_URL = 'https://product-details.mozilla.org/1.0/firefox_
 MOZILLA_THUNDERBIRD_VERSIONS_URL = 'https://product-details.mozilla.org/1.0/thunderbird_versions.json'
 
 # ============================================================================
+# HARDCODED EXCLUSION LIST (APPS NOT FOR MANUAL DOWNLOAD)
+# ============================================================================
+# These applications are excluded from download prompts because they are either:
+# - Managed through other deployment methods (macOS system updates, MDM, etc.)
+# - Require special deployment procedures (Java-based IDEs, Creative Cloud, etc.)
+# - Should not be downloaded manually (OS updates, license managers, etc.)
+
+HARDCODED_EXCLUSIONS = {
+    # Apple System Updates (handled by macOS System Preferences)
+    'apple macos',
+    'apple macos sonoma',
+    'apple macos ventura',
+    'apple macos tahoe',
+    'apple safari',
+    'apple xcode',
+    
+    # Adobe Creative Cloud (requires separate licensing/deployment)
+    'adobe creative cloud',
+    'adobe acrobat dc continuous',
+    'adobe acrobat reader dc continuous',
+    
+    # Specialized Enterprise/Development Tools (require custom deployment)
+    'blackmagic davinci resolve',  # Professional video editing
+    'cisco jabber',  # Enterprise communications
+    'displaylink manager',  # Hardware-specific driver
+    'docker desktop',  # Container platform
+    'duet',  # Display extension hardware
+    'eclipse ide',  # Java-based IDE
+    'eclipse ide for eclipse committers',
+    'iLok license manager',  # License management hardware
+    'jetbrains intellij idea community',  # Java-based IDE
+    'jetbrains intellij idea ultimate',
+    'jetbrains pycharm community',  # Python IDE
+    'jetbrains pycharm professional',
+    'microsoft intune company portal',  # MDM-managed portal
+    'node.js',  # Developer runtime
+    'nudge',  # macOS update notification tool (MDM-managed)
+    'onyx',  # System optimization (potentially risky)
+    'oracle sqldeveloper',  # Java-based database tool
+    'oracle virtualbox',  # Hypervisor (use VMware Fusion instead)
+    'qsr nvivo',  # Research data analysis
+    'qsr nvivo 11',
+    'qsr nvivo 12',
+}
+
+# ============================================================================
 # DOWNLOAD URL MAPPINGS
 # ============================================================================
 
@@ -297,13 +343,16 @@ def extract_and_generate_rtf() -> None:
     # Extract emails from Mail
     extract_emails_from_mail()
     
-    # Load exclusion list
+    # Load exclusion list from file (if it exists)
     try:
         with open(EXCLUSION_FILE_PATH, 'r') as f:
-            excluded_titles = {line.strip() for line in f if line.strip()}
+            file_excluded_titles = {line.strip() for line in f if line.strip()}
     except FileNotFoundError:
         logging.warning(f"Exclusion file not found at {EXCLUSION_FILE_PATH}")
-        excluded_titles = set()
+        file_excluded_titles = set()
+    
+    # Combine hardcoded and file-based exclusions
+    excluded_titles = HARDCODED_EXCLUSIONS | file_excluded_titles
     
     # Load raw email content
     try:
@@ -318,10 +367,18 @@ def extract_and_generate_rtf() -> None:
     matches = re.findall(title_version_pattern, email_content)
     
     title_version_dict = {}
+    excluded_count = 0
+    
     for title, version in matches:
         version = version.strip()
-        if title in excluded_titles:
+        # Normalize title for exclusion comparison
+        normalized_title = normalize_title(title)
+        
+        if normalized_title in excluded_titles:
+            excluded_count += 1
+            logging.info(f"Excluding app: {title} {version}")
             continue
+            
         if title in title_version_dict:
             if version_key(version) > version_key(title_version_dict[title]):
                 title_version_dict[title] = version
@@ -375,8 +432,8 @@ def extract_and_generate_rtf() -> None:
     except Exception as e:
         logging.warning(f"Could not delete raw_email.txt: {e}")
     
-    logging.info(f"RTF file generated with {len(sorted_titles)} applications.")
-    show_popup(f"RTF file generated with {len(sorted_titles)} applications.")
+    logging.info(f"RTF file generated with {len(sorted_titles)} applications ({excluded_count} excluded).")
+    show_popup(f"RTF file generated with {len(sorted_titles)} applications.\n({excluded_count} excluded from download list)")
 
 
 # ============================================================================
