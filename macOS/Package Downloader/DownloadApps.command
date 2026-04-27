@@ -5,7 +5,7 @@
 # Purpose: Interactive macOS application downloader
 # Description: Displays a dialog to select multiple applications, then opens
 #              their download links in the default browser.
-# Usage: ./DownloadUpdates.command
+# Usage: ./DownloadApps.command
 # Requirements: macOS, zsh, osascript
 ################################################################################
 
@@ -25,7 +25,7 @@ declare -r -A apps=(
     ["ESET"]="https://download.eset.com/com/eset/apps/business/eea/mac/latest/eea_osx_en.dmg"
     ["GitKraken"]="https://release.gitkraken.com/darwin/installGitKraken.dmg"
     ["GoToMeeting"]="https://link.gotomeeting.com/latest-dmg"
-    ["Google Chrome"]="https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms/googlechrome.pkg"
+    ["Google Chrome"]="https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms"
     ["Grammarly"]="https://download-editor.grammarly.com/osx/Grammarly.dmg"
     ["iLok License Manager"]="https://installers.ilok.com/iloklicensemanager/LicenseSupportInstallerMac.zip"
     ["Iterate Cyberduck"]="https://version.cyberduck.io/Cyberduck-latest.zip"
@@ -105,16 +105,21 @@ startTime=$(date +%s)
 # Display a confirmation dialog before opening a download link
 confirm_next() {
     local app_name="$1"
-    osascript <<EOF
-    display dialog "Download $app_name?" with title "Download Manager" buttons {"Cancel", "OK"} default button "OK"
-    return button returned of result
+    local response
+
+    response=$(osascript 2>/dev/null <<EOF
+display dialog "Download $app_name?" with title "Download Manager" buttons {"Cancel", "OK"} default button "OK" cancel button "Cancel"
+return button returned of result
 EOF
+)
+
+    [[ "$response" == "OK" ]]
 }
 
 # Display an informational dialog
 popup() {
     local message="$1"
-    osascript <<EOF
+    osascript 2>/dev/null <<EOF
     display dialog "$message" buttons {"OK"} default button "OK"
 EOF
 }
@@ -124,7 +129,7 @@ EOF
 joined=$(printf '"%s", ' "${(ko)apps[@]}" | sed 's|, $||g')
 
 # Display selection dialog
-theSelection=$(osascript <<EOF
+theSelection=$(osascript 2>/dev/null <<EOF
 set theList to { $joined }
 set AppsToDownload to choose from list theList with prompt "Select the apps you need to download:" with multiple selections allowed
 return AppsToDownload
