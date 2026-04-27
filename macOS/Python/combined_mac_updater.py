@@ -344,16 +344,16 @@ def extract_and_generate_rtf() -> None:
     # Extract emails from Mail
     extract_emails_from_mail()
     
-    # Load exclusion list from file (if it exists)
-    try:
-        with open(EXCLUSION_FILE_PATH, 'r') as f:
-            file_excluded_titles = {line.strip() for line in f if line.strip()}
-    except FileNotFoundError:
-        logging.warning(f"Exclusion file not found at {EXCLUSION_FILE_PATH}")
-        file_excluded_titles = set()
-    
-    # Combine hardcoded and file-based exclusions
-    excluded_titles = HARDCODED_EXCLUSIONS | file_excluded_titles
+# Load exclusion list from file (if it exists)
+try:
+    with open(EXCLUSION_FILE_PATH, 'r') as f:
+        file_excluded_titles = {normalize_title(line) for line in f if line.strip()}
+except FileNotFoundError:
+    logging.warning(f"Exclusion file not found at {EXCLUSION_FILE_PATH}")
+    file_excluded_titles = set()
+
+# Combine hardcoded and file-based exclusions
+excluded_titles = {normalize_title(title) for title in HARDCODED_EXCLUSIONS} | file_excluded_titles
     
     # Load raw email content
     try:
