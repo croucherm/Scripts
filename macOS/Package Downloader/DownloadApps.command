@@ -26,7 +26,7 @@ declare -r -A apps=(
     ["GitKraken"]="https://release.gitkraken.com/darwin/installGitKraken.dmg"
     ["GoToMeeting"]="https://link.gotomeeting.com/latest-dmg"
     ["Google Chrome"]="https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms"
-    ["Grammarly"]="https://download-editor.grammarly.com/osx/Grammarly.dmg"
+    ["Grammarly"]="["Grammarly"]="https://www.grammarly.com/service/download/direct?default=true""
     ["iLok License Manager"]="https://installers.ilok.com/iloklicensemanager/LicenseSupportInstallerMac.zip"
     ["Iterate Cyberduck"]="https://version.cyberduck.io/Cyberduck-latest.zip"
     ["Keka"]="https://d.keka.io/"
@@ -160,9 +160,11 @@ while IFS= read -r app; do
 done <<< "$selectionList"
 
 # --- Completion Message ---
+popup "All downloads complete. Click OK when you're done patching."
+
 endTime=$(date +%s)
 elapsedTime=$(($endTime - $startTime))
 minutes=$(($elapsedTime / 60))
 seconds=$(($elapsedTime % 60))
 
-popup "Download session completed in $minutes minute(s) and $seconds second(s)."
+popup "Time spent patching: $minutes minute(s) and $seconds second(s)."
