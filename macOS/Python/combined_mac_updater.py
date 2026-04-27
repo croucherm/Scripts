@@ -101,6 +101,7 @@ DOWNLOAD_URLS: Dict[str, str] = {
     'citrix workspace': 'https://www.citrix.com/downloads/workspace-app/mac/workspace-app-for-mac-latest.html#ctx-dl-eula',
     'cyberduck': 'https://version.cyberduck.io/Cyberduck-latest.zip',
     'dbeaver ce': 'https://dbeaver.io/files/dbeaver-ce-latest-macos.dmg',
+    'dbeaver community edition': 'https://dbeaver.io/files/dbeaver-ce-latest-macos.dmg',
     'discord': 'https://discordapp.com/api/download?platform=osx',
     'docker': 'https://desktop.docker.com/mac/stable/Docker.dmg',
     'dropbox': 'https://www.dropbox.com/downloading?type=full',
