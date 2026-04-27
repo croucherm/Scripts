@@ -1,8 +1,16 @@
 #!/bin/zsh
 
-# --- Full Configuration & Links ---
-declare -A apps
-apps=(
+################################################################################
+# Download Apps Script
+# Purpose: Interactive macOS application downloader
+# Description: Displays a dialog to select multiple applications, then opens
+#              their download links in the default browser.
+# Usage: ./DownloadApps.command
+# Requirements: macOS, zsh, osascript
+################################################################################
+
+# --- Configuration ---
+declare -r -A apps=(
 
     # --- Direct/Redirect Links ---
     ["Adobe Acrobat Reader"]="https://get.adobe.com/reader/direct/"
@@ -38,7 +46,7 @@ apps=(
     ["Mozilla Firefox"]="https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US"
     ["Mozilla Firefox ESR"]="https://download.mozilla.org/?product=firefox-esr-latest-ssl&os=osx&lang=en-US"
     ["Mozilla Thunderbird"]="https://download.mozilla.org/?product=thunderbird-latest-ssl&os=osx&lang=en-US"
-    ["Opera"]="http://www.opera.com/download/get/?partner=www&opsys=MacOS"
+    ["Opera"]="https://www.opera.com/download/get/?partner=www&opsys=MacOS"
     ["Postman"]="https://dl.pstmn.io/download/latest/osx"
     ["Rectangle"]="https://rectangleapp.com/download"
     ["Slack"]="https://slack.com/ssb/download-osx-universal"
@@ -90,51 +98,66 @@ apps=(
     ["xQuartz"]="https://www.xquartz.org/"
 )
 
-startTime=$(date +%s)
+# --- Timing ---
+local startTime=$(date +%s)
 
 # --- Functions ---
-confirm_next () {
+# Display a confirmation dialog before opening a download link
+confirm_next() {
+    local app_name="$1"
     osascript <<EOF
-    display dialog "Downloading $1" with title "Download Manager" buttons {"Cancel", "OK"} default button "OK"
+    display dialog "Download $app_name?" with title "Download Manager" buttons {"Cancel", "OK"} default button "OK"
+    return button returned of result
 EOF
 }
 
-popup () {
+# Display an informational dialog
+popup() {
+    local message="$1"
     osascript <<EOF
-    display dialog "$1" buttons {"OK"} default button "OK"
+    display dialog "$message" buttons {"OK"} default button "OK"
 EOF
 }
 
 # --- Selection Logic ---
-joined=$(printf '"%s", ' "${(ko)apps[@]}" | sed 's|, $||g')
+# Build comma-separated list of app names for AppleScript
+local joined=$(printf '"%s", ' "${(ko)apps[@]}" | sed 's|, $||g')
 
-theSelection=$(osascript <<EOF
+# Display selection dialog
+local theSelection=$(osascript <<EOF
 set theList to { $joined }
 set AppsToDownload to choose from list theList with prompt "Select the apps you need to download:" with multiple selections allowed
 return AppsToDownload
 EOF
 )
 
+# Check if user cancelled
 if [[ $theSelection == "false" || -z $theSelection ]]; then
     exit 0
 fi
 
-# Parsing the AppleScript list
-selectionList=$(echo "$theSelection" | tr ',' '\n' | sed 's/^ *//;s/ *$//')
+# Parse AppleScript list output, removing quotes and extra whitespace
+local selectionList=$(echo "$theSelection" | tr ',' '\n' | sed 's/^[[:space:]"]*//;s/[[:space:]"]*$//')
 
 # --- Main Loop ---
-echo "$selectionList" | while read -r app; do
+# Process each selected application
+while IFS= read -r app; do
+    # Skip empty lines and validate app exists in configuration
     if [[ -n "$app" && -n "${apps[$app]}" ]]; then
+        # Confirm before opening download link
         if confirm_next "$app"; then
             echo "Opening: $app"
             open "${apps[$app]}"
         else
-            echo "User cancelled."
-            exit 0
+            echo "User cancelled download for: $app"
         fi
     fi
-done
+done <<< "$selectionList"
 
-endTime=$(date +%s)
-elapsedTime=$(($endTime - $startTime))
-popup "Time spent patching $((elapsedTime / 60)) minutes."
+# --- Completion Message ---
+local endTime=$(date +%s)
+local elapsedTime=$(($endTime - $startTime))
+local minutes=$(($elapsedTime / 60))
+local seconds=$(($elapsedTime % 60))
+
+popup "Download session completed in $minutes minute(s) and $seconds second(s)."
