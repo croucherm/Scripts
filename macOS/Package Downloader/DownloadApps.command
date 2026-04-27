@@ -5,7 +5,7 @@
 # Purpose: Interactive macOS application downloader
 # Description: Displays a dialog to select multiple applications, then opens
 #              their download links in the default browser.
-# Usage: ./DownloadApps.command
+# Usage: ./DownloadUpdates.command
 # Requirements: macOS, zsh, osascript
 ################################################################################
 
@@ -25,7 +25,7 @@ declare -r -A apps=(
     ["ESET"]="https://download.eset.com/com/eset/apps/business/eea/mac/latest/eea_osx_en.dmg"
     ["GitKraken"]="https://release.gitkraken.com/darwin/installGitKraken.dmg"
     ["GoToMeeting"]="https://link.gotomeeting.com/latest-dmg"
-    ["Google Chrome"]="https://dl.google.com/chrome/mac/universal/stable/GGRM/googlechrome.dmg"
+    ["Google Chrome"]="https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms/googlechrome.pkg"
     ["Grammarly"]="https://download-editor.grammarly.com/osx/Grammarly.dmg"
     ["iLok License Manager"]="https://installers.ilok.com/iloklicensemanager/LicenseSupportInstallerMac.zip"
     ["Iterate Cyberduck"]="https://version.cyberduck.io/Cyberduck-latest.zip"
@@ -54,12 +54,12 @@ declare -r -A apps=(
     ["TeamViewer QS"]="https://download.teamviewer.com/download/TeamViewerQS.dmg"
     ["Telegram"]="https://telegram.org/dl/macos"
     ["The Unarchiver"]="https://dl.devmate.com/com.macpaw.site.theunarchiver/TheUnarchiver.dmg"
-    ["VLC"]="https://get.videolan.org/vlc/last/macosx/vlc-3.0.20-universal.dmg"
     ["Zotero"]="https://www.zotero.org/download/client/dl?channel=release&platform=mac"
     ["Zoom"]="https://zoom.us/client/latest/ZoomInstallerIT.pkg"
 
     # --- Landing Pages ---
     ["Alfred"]="https://www.alfredapp.com"
+    ["Apache OpenOffice"]="https://www.openoffice.org/download/"
     ["AppCleaner"]="https://freemacsoft.net/appcleaner/"
     ["Aquamacs"]="https://aquamacs.org/download.html"
     ["Audacity"]="https://www.audacityteam.org/download/mac/"
@@ -72,34 +72,34 @@ declare -r -A apps=(
     ["Evernote"]="https://evernote.com/download"
     ["FileZilla"]="https://filezilla-project.org/download.php?platform=osx"
     ["GIMP"]="https://www.gimp.org/downloads/"
-    ["Github Desktop"]="https://desktop.github.com/"
+    ["GitHub Desktop"]="https://desktop.github.com/"
     ["Google Android Studio"]="https://developer.android.com/studio"
     ["Google Earth Pro"]="https://www.google.com/earth/versions/#earth-pro"
     ["GrandPerspective"]="https://sourceforge.net/projects/grandperspectiv/files/latest/download"
-    ["Handbrake"]="https://handbrake.fr/downloads.php"
+    ["HandBrake"]="https://handbrake.fr/downloads.php"
     ["IntelliJ IDEA"]="https://www.jetbrains.com/idea/download/#section=mac"
     ["LastPass"]="https://lastpass.com/misc_download2.php"
     ["Microsoft Skype"]="https://www.skype.com/en/get-skype/"
-    ["Microsoft Visual Code Studio"]="https://code.visualstudio.com/download"
+    ["Microsoft Visual Studio Code"]="https://code.visualstudio.com/download"
     ["Musescore"]="https://musescore.org/en"
     ["Omnissa Horizon Client"]="https://customerconnect.omnissa.com/downloads/info/slug/virtual_desktop_and_apps/omnissa_horizon_clients/8"
-    ["Open Office"]="https://www.openoffice.org/download/"
     ["QGIS"]="https://www.qgis.org/en/site/forusers/download.html"
     ["R"]="https://cran.r-project.org/bin/macosx/"
     ["RStudio"]="https://posit.co/download/rstudio-desktop/"
     ["Skim"]="https://skim-app.sourceforge.io"
     ["Solstice"]="https://www.mersive.com/download/"
     ["Sublime Text"]="https://www.sublimetext.com/download"
-    ["Textmate"]="https://macromates.com/download"
+    ["TextMate"]="https://macromates.com/download"
     ["VMware Fusion"]="https://www.vmware.com/products/fusion/fusion-evaluation.html"
     ["VirtualBox"]="https://www.virtualbox.org/wiki/Downloads"
     ["Vivaldi"]="https://vivaldi.com/download/"
+    ["VLC"]="https://www.videolan.org/vlc/download-macosx.html"
     ["Wireshark"]="https://www.wireshark.org/download.html"
     ["xQuartz"]="https://www.xquartz.org/"
 )
 
 # --- Timing ---
-local startTime=$(date +%s)
+startTime=$(date +%s)
 
 # --- Functions ---
 # Display a confirmation dialog before opening a download link
@@ -121,10 +121,10 @@ EOF
 
 # --- Selection Logic ---
 # Build comma-separated list of app names for AppleScript
-local joined=$(printf '"%s", ' "${(ko)apps[@]}" | sed 's|, $||g')
+joined=$(printf '"%s", ' "${(ko)apps[@]}" | sed 's|, $||g')
 
 # Display selection dialog
-local theSelection=$(osascript <<EOF
+theSelection=$(osascript <<EOF
 set theList to { $joined }
 set AppsToDownload to choose from list theList with prompt "Select the apps you need to download:" with multiple selections allowed
 return AppsToDownload
@@ -137,7 +137,7 @@ if [[ $theSelection == "false" || -z $theSelection ]]; then
 fi
 
 # Parse AppleScript list output, removing quotes and extra whitespace
-local selectionList=$(echo "$theSelection" | tr ',' '\n' | sed 's/^[[:space:]"]*//;s/[[:space:]"]*$//')
+selectionList=$(echo "$theSelection" | tr ',' '\n' | sed 's/^[[:space:]"]*//;s/[[:space:]"]*$//')
 
 # --- Main Loop ---
 # Process each selected application
@@ -155,9 +155,9 @@ while IFS= read -r app; do
 done <<< "$selectionList"
 
 # --- Completion Message ---
-local endTime=$(date +%s)
-local elapsedTime=$(($endTime - $startTime))
-local minutes=$(($elapsedTime / 60))
-local seconds=$(($elapsedTime % 60))
+endTime=$(date +%s)
+elapsedTime=$(($endTime - $startTime))
+minutes=$(($elapsedTime / 60))
+seconds=$(($elapsedTime % 60))
 
 popup "Download session completed in $minutes minute(s) and $seconds second(s)."
