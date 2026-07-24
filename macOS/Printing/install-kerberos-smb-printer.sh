@@ -254,7 +254,7 @@ log "Printer PPD validated and expanded successfully."
 # Re-enable only after the SMB deployment has been fully validated and queue
 # removal has been formally approved.
 #
-# Tracking ticket: REPLACE-WITH-JIRA-TICKET
+# Tracking ticket: DWDS-496
 # Disabled as of: 2026-07-24
 #
 # This block removes only the queue supplied through Jamf parameter 9 and only
